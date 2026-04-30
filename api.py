@@ -20,6 +20,8 @@ app = FastAPI(
     version="1.0"
 )
 
+# --- Schemas ---
+
 class CropPredictionRequest(BaseModel):
     n: float
     p: float
@@ -37,6 +39,8 @@ class CropPredictionResponse(BaseModel):
     top_prediction: str
     confidence: float
     top_3_predictions: list[CropEvaluation]
+
+# --- Helpers ---
 
 def evaluate_single_crop(crop_name: str, prob: float, req: CropPredictionRequest) -> CropEvaluation:
     """Helper to run the LangGraph RAG pipeline for a single crop."""
@@ -58,6 +62,19 @@ def evaluate_single_crop(crop_name: str, prob: float, req: CropPredictionRequest
             probability=prob, 
             rag_evaluation=f"Failed to generate evaluation: {e}"
         )
+
+# --- Routes ---
+
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "message": "Welcome to the IntelliFarm AI Server. Use /docs for API documentation.",
+        "endpoints": {
+            "predict": "/predict (POST)",
+            "documentation": "/docs"
+        }
+    }
 
 @app.post("/predict", response_model=CropPredictionResponse)
 def predict_and_evaluate(req: CropPredictionRequest):
@@ -99,6 +116,11 @@ def predict_and_evaluate(req: CropPredictionRequest):
         confidence=result["confidence"],
         top_3_predictions=top_3_evaluated
     )
+
+@app.post("/predict/predict", response_model=CropPredictionResponse)
+def predict_alias(req: CropPredictionRequest):
+    """Alias for /predict to handle potential misconfigurations in client calls."""
+    return predict_and_evaluate(req)
 
 if __name__ == "__main__":
     print("=" * 60)
